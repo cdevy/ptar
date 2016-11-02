@@ -1,0 +1,11 @@
+Etape 1 :
+
+Lister tous les noms des fichiers archivés
+Format USTAR
+-> stocke le chemin relatif par rapport à l'archive (les 100 derniers caractères en debut de header, puis si plus de caractères, encore de la place pour 155 à la fin) -> coupe au niveau d'un /
+
+
+On met de cote dle cas suivant :
+Au max : nom de fichier qui fait 100 caracteres et le chemin ~255-nomdufichier
+
+dans le cas du fichier à 100 car, pas de \0 a la fin
