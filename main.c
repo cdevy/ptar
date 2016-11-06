@@ -17,11 +17,11 @@ int octalToDecimal(int octal) {
 }
 
 int main() {
-    int fd = open("Tests/archive.tar", O_RDONLY);
+    int fd = open("Tests/testtar.tar", O_RDONLY);
     header_t header;
     int empty = 0;
     char path[257] = "";
-    char filename[100] = "";
+    char filename[101] = "";
     while (!empty) {
 	strcpy(path, "");
 	read(fd, &header, 512);
@@ -33,17 +33,17 @@ int main() {
 	    }
 	} else {
 	    if (header.typeflag[0] != '1') { /* we don't print links */
-	        printf("Nom : %s\n", header.name);
 		if (header.prefix[0] != '\0') {
 		    strcpy(path, header.prefix);
 		    strcat(path, "/");
 		}
-		strcpy(filename, header.name);
+		strncpy(filename, header.name,100);
+		strcat(filename, "\0");
 		strcat(path, filename);
-		printf("Chemin : %s\n", path);
+		printf("Path : %s\n", path);
 	    }
 	    int offset = octalToDecimal(atoi(header.size));
-	    printf("size : %d\n", offset);
+	    printf("Size : %d\n", offset);
 	    offset = ((offset/512)+(offset%512 != 0))*512;
 	    lseek(fd, offset, SEEK_CUR);
 	}
