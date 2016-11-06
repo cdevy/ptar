@@ -16,8 +16,44 @@ int octalToDecimal(int octal) {
     return decimal;
 }
 
-int main() {
-    int fd = open("Tests/testtar.tar", O_RDONLY);
+int main(int argc, char* argv[]) {
+    /* Partie détection des options, elles sont stockées dans les optX correspondants à leur noms */
+
+    int opt,optx,optl,optp,optz,nbthread;
+    optx = 0;
+    optl = 0;
+    optp = 0;
+    optz = 0;
+    nbthread = 0;
+    while ( (opt = getopt(argc, argv, "xlp:z")) != -1 ) {
+	switch(opt) {
+	    case 'x':
+		optx = 1;
+		break;
+	    case 'l':
+		optl = 1;
+		break;
+	    case 'p':
+		nbthread = atoi(optarg);
+		optp = 1;
+		break;
+	    case 'z':
+		optz = 1;
+		break;
+	    default :
+		printf("WARNING : option non recognized, ignoring it : %c\n", optopt);
+	}
+    }
+
+    printf("///debug/// \nx=%d\nl=%d\np=%d avec %d threads\nz=%d\n",optx,optl,optp,nbthread,optz);
+
+    if (optind >= argc){
+	printf("ERROR : an argument (path of tar archive) is expected after the options or the number of thread was not specified with -p option\n");
+	exit(-1);
+    }
+
+
+    int fd = open(argv[optind], O_RDONLY);
     header_t header;
     int empty = 0;
     char path[257] = "";
