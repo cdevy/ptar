@@ -43,10 +43,9 @@ int main() {
 		printf("Chemin : %s\n", path);
 	    }
 	    int offset = octalToDecimal(atoi(header.size));
-	    if (offset) { /* in case of an empty file or directory, there's no contents */
-	        offset = ((offset/512)+1)*512;
-	        lseek(fd, offset, SEEK_CUR);
-	    }
+	    printf("size : %d\n", offset);
+	    offset = ((offset/512)+(offset%512 != 0))*512;
+	    lseek(fd, offset, SEEK_CUR);
 	}
     }
     return 0;
