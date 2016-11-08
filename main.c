@@ -18,21 +18,23 @@ int octalToDecimal(int octal) {
 }
 
 int extractor(pile_h* first) {
-	struct stat st = {0};
-	pile_h* pheader;
-	while (boucle) {
+    struct stat st = {0};
+    pile_h* pheader;
+    while (boucle) {
 	
 	/* Récupération du header (@TODO insérer mutex ici) */
-	   pheader = first;
-	   if(first->next != NULL){
-	   	first = first->next;
-	   }
-	   boucle = boucle -1;
+	pheader = first;
+	if(first->next != NULL){
+	    first = first->next;
+	}
+	boucle = boucle -1;
 
-	/* Extraction du fichier */
+	/* Extraction */
 	int fd = open(archive, O_RDONLY);
 	lseek(fd,pheader->pos,SEEK_CUR);
 	int i;
+
+	/* Création des dossiers parents */
 	for (i=0; i < (int)strlen(pheader->path); i++){
 	    if(pheader->path[i] == '/'){
 		pheader->path[i] = '\0';
@@ -42,12 +44,34 @@ int extractor(pile_h* first) {
 		pheader->path[i] = '/';	
 	    }
 	}
+	
+	/* Extraction du fichier */
+	if (stat(pheader->path, &st) == 0) {
+	   printf("WARNING : file %s already exists, not extracting\n", pheader->path);
+	} else {
+	    int file = open(pheader->path, O_WRONLY | O_CREAT, 0777);
+	    char buffer[512];
+	    int sizetowrite;
+	    while (pheader->size > 0){
+	        if(pheader->size < 512){
+		    sizetowrite = pheader->size ;
+	    	} else {
+		    sizetowrite = 512;
+	    	}
+	    	read(fd, buffer, 512);
+	    	write(file, buffer, sizetowrite);
+	    	pheader->size = pheader->size - 512;
+	    }
+	    fsync(file);
+	    close(file);
 	}
-	return 0;
+    }
+    return 0;
 }  
 	
 
 int main(int argc, char* argv[]) {
+
     /* Partie détection des options, elles sont stockées dans les optX correspondants à leur noms */
 
     int opt,optx,optl,optp,optz,nbthread;
@@ -113,8 +137,7 @@ int main(int argc, char* argv[]) {
 	    strcat(path, filename);
 	    printf("%s\n", path);
 	    int offset = octalToDecimal(atoi(header->size));
-	    printf("Size : %d\n", offset);
-	    offset = ((offset/512)+(offset%512 != 0))*512;
+	    int offset2 = ((offset/512)+(offset%512 != 0))*512;
 	    if(optx){
 		boucle = boucle + 1;
 	    	pile_h *sheader;
@@ -132,7 +155,7 @@ int main(int argc, char* argv[]) {
 	        }
 	        memory = sheader;
 	    }
-	    lseek(fd, offset, SEEK_CUR);
+	    lseek(fd, offset2, SEEK_CUR);
 	}
     }
     if (optx) {
