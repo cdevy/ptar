@@ -64,6 +64,8 @@ int extractor(pile_h* first) {
 	    }
 	    fsync(file);
 	    close(file);
+	    chown(pheader->path, atoi(pheader->header->uid) , atoi(pheader->header->gid));
+	    chmod(pheader->path, octalToDecimal(atoi(pheader->header->mode)));
 	}
     }
     return 0;
