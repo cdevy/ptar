@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h> /* open et lseek */
+#include <sys/types.h> /* utime */
 #include <fcntl.h> /* open */
 #include <unistd.h> /* read et lseek */
-#include <string.h>
+#include <string.h> /* strcpy et strcat */
+#include <utime.h> /* utime */
 int boucle = 0;
 char* archive;
 int octalToDecimal(int octal) {
@@ -17,12 +19,23 @@ int octalToDecimal(int octal) {
     return decimal;
 }
 
+long long longOctalToDecimal(long long octal) {
+    long long decimal = 0;
+    long long i = 1;
+    while (octal != 0) {
+	decimal += (octal%10)*i;
+	i = i*8;
+	octal = octal/10;
+    }
+    return decimal;
+}
 int extractor(pile_h* first) {
     struct stat st = {0};
     pile_h* pheader;
+    struct utimbuf ubuf;
     while (boucle) {
 	
-	/* Récupération du header (@TODO insérer mutex ici) */
+	/* Récupération du header (@TODO insérer mutex ici pour le cas des pthread) */
 	pheader = first;
 	if(first->next != NULL){
 	    first = first->next;
@@ -46,9 +59,7 @@ int extractor(pile_h* first) {
 	}
 	
 	/* Extraction du fichier */
-	if (stat(pheader->path, &st) == 0) {
-	   printf("WARNING : file %s already exists, not extracting\n", pheader->path);
-	} else {
+	if (stat(pheader->path, &st) != 0) {
 	    int file = open(pheader->path, O_WRONLY | O_CREAT, 0777);
 	    char buffer[512];
 	    int sizetowrite;
@@ -64,9 +75,15 @@ int extractor(pile_h* first) {
 	    }
 	    fsync(file);
 	    close(file);
-	    chown(pheader->path, atoi(pheader->header->uid) , atoi(pheader->header->gid));
-	    chmod(pheader->path, octalToDecimal(atoi(pheader->header->mode)));
 	}
+	// Changer l'uid et gid
+	chown(pheader->path, atoi(pheader->header->uid) , atoi(pheader->header->gid));
+	// changer le mode d'accès
+	chmod(pheader->path, octalToDecimal(atoi(pheader->header->mode)));
+	// changer le temps de modification (non suffisant pour les dossiers)
+	ubuf.modtime = longOctalToDecimal(atoll(pheader->header->mtime));
+	ubuf.actime = ubuf.modtime;
+	utime(pheader->path, &ubuf);
     }
     return 0;
 }  
