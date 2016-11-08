@@ -20,3 +20,11 @@ char devminor[8];
 char prefix[155]; // ca
 char pad[12];
 } header_t;
+
+typedef struct pile_header {
+struct header_posix_ustar* header;
+int pos;
+int size;
+char path[257];
+struct pile_header* next;
+} pile_h;

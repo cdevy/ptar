@@ -4,7 +4,8 @@
 #include <fcntl.h> /* open */
 #include <unistd.h> /* read et lseek */
 #include <string.h>
-
+int boucle = 0;
+char* archive;
 int octalToDecimal(int octal) {
     int decimal = 0;
     int i = 1;
@@ -15,6 +16,36 @@ int octalToDecimal(int octal) {
     }
     return decimal;
 }
+
+int extractor(pile_h* first) {
+	struct stat st = {0};
+	pile_h* pheader;
+	while (boucle) {
+	
+	/* Récupération du header (@TODO insérer mutex ici) */
+	   pheader = first;
+	   if(first->next != NULL){
+	   	first = first->next;
+	   }
+	   boucle = boucle -1;
+
+	/* Extraction du fichier */
+	int fd = open(archive, O_RDONLY);
+	lseek(fd,pheader->pos,SEEK_CUR);
+	int i;
+	for (i=0; i < (int)strlen(pheader->path); i++){
+	    if(pheader->path[i] == '/'){
+		pheader->path[i] = '\0';
+		if (stat(pheader->path, &st) == -1) {
+		    mkdir(pheader->path, 0777);
+		}
+		pheader->path[i] = '/';	
+	    }
+	}
+	}
+	return 0;
+}  
+	
 
 int main(int argc, char* argv[]) {
     /* Partie détection des options, elles sont stockées dans les optX correspondants à leur noms */
@@ -52,38 +83,60 @@ int main(int argc, char* argv[]) {
 	exit(-1);
     }
 
-
-    int fd = open(argv[optind], O_RDONLY);
-    header_t header;
+    archive = argv[optind];
+    int fd = open(archive, O_RDONLY);
+    header_t *header;
+    pile_h *first;
+    pile_h *memory;
+    int boolean = 1;
+    
     int empty = 0;
     char path[257] = "";
     char filename[101] = "";
     while (!empty) {
+	header = malloc(sizeof (header_t));
 	strcpy(path, "");
-	read(fd, &header, 512);
-	if (header.name[0] == '\0') {
+	read(fd, header, 512);
+	if (header->name[0] == '\0') {
 	    empty = 1;
-	    read(fd, &header, 512);
-	    if (header.name[0] != '\0') {
+	    read(fd, header, 512);
+	    if (header->name[0] != '\0') {
 		printf("Error : empty filename");
 	    }
 	} else {
-	    if (header.typeflag[0] != '1') { /* we don't print links */
-		if (header.prefix[0] != '\0') {
-		    strcpy(path, header.prefix);
-		    strcat(path, "/");
-		}
-		strncpy(filename, header.name,100);
-		strcat(filename, "\0");
-		strcat(path, filename);
-		printf("Path : %s\n", path);
+	    if (header->prefix[0] != '\0') {
+		strcpy(path, header->prefix);
+		strcat(path, "/");
 	    }
-	    int offset = octalToDecimal(atoi(header.size));
+	    strncpy(filename, header->name,100);
+	    strcat(filename, "\0");
+	    strcat(path, filename);
+	    printf("%s\n", path);
+	    int offset = octalToDecimal(atoi(header->size));
 	    printf("Size : %d\n", offset);
 	    offset = ((offset/512)+(offset%512 != 0))*512;
+	    if(optx){
+		boucle = boucle + 1;
+	    	pile_h *sheader;
+	    	sheader = malloc (sizeof (pile_h));
+	    	sheader->header = header;
+		sheader->size = offset;
+		sheader->next = NULL;
+	    	strcpy(sheader->path,path);
+	    	sheader->pos = lseek(fd,0, SEEK_CUR);
+	    	if (boolean) {
+		    boolean = 0;
+		    first = sheader;
+	        } else {
+		    memory->next = sheader;
+	        }
+	        memory = sheader;
+	    }
 	    lseek(fd, offset, SEEK_CUR);
 	}
     }
-    return 0;
+    if (optx) {
+	extractor(first);
+    }
 }
 
