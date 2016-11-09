@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h> /* open et lseek */
-#include <sys/types.h> /* utime */
+#include <sys/time.h> /* lutimes */
 #include <fcntl.h> /* open */
 #include <unistd.h> /* read et lseek */
 #include <string.h> /* strcpy et strcat */
-#include <utime.h> /* utime */
 int boucle = 0;
 char* archive;
 int octalToDecimal(int octal) {
@@ -32,7 +31,7 @@ long long longOctalToDecimal(long long octal) {
 int extractor(pile_h* first) {
     struct stat st = {0};
     pile_h* pheader;
-    struct utimbuf ubuf;
+    struct timeval times[2];
     while (boucle) {
 	
 	/* Récupération du header (@TODO insérer mutex ici pour le cas des pthread) */
@@ -59,7 +58,8 @@ int extractor(pile_h* first) {
 	}
 	
 	/* Extraction du fichier */
-	if (stat(pheader->path, &st) != 0) {
+	char type = (char)pheader->header->typeflag[0];
+	if (stat(pheader->path, &st) != 0 && (type == '0' || type == '5')) {
 	    int file = open(pheader->path, O_WRONLY | O_CREAT, 0777);
 	    char buffer[512];
 	    int sizetowrite;
@@ -75,15 +75,22 @@ int extractor(pile_h* first) {
 	    }
 	    fsync(file);
 	    close(file);
+	} else if (stat(pheader->path, &st) != 0 && (type == '2')) {
+	    symlink(pheader->header->linkname, pheader->path);
 	}
 	// Changer l'uid et gid
-	chown(pheader->path, atoi(pheader->header->uid) , atoi(pheader->header->gid));
-	// changer le mode d'accès
-	chmod(pheader->path, octalToDecimal(atoi(pheader->header->mode)));
+	lchown(pheader->path, atoi(pheader->header->uid) , atoi(pheader->header->gid));
+	// changer le mode d'accès (PAS DANS LE CAS D'UN LINK )
+	if (type == '0' || type == '5'){
+	    chmod(pheader->path, octalToDecimal(atoi(pheader->header->mode)));
+	}
 	// changer le temps de modification (non suffisant pour les dossiers)
-	ubuf.modtime = longOctalToDecimal(atoll(pheader->header->mtime));
-	ubuf.actime = ubuf.modtime;
-	utime(pheader->path, &ubuf);
+	times[0].tv_sec = longOctalToDecimal(atoll(pheader->header->mtime));
+	times[0].tv_usec = 0;
+	times[1].tv_sec = times[0].tv_sec;
+	times[1].tv_usec = 0;
+	printf("time : %ld\n", times[0].tv_sec);
+	lutimes(pheader->path, times);
     }
     return 0;
 }  
