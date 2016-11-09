@@ -58,6 +58,7 @@ int extractor(pile_h* first) {
 	}
 	
 	/* Extraction du fichier */
+	
 	char type = (char)pheader->header->typeflag[0];
 	if (stat(pheader->path, &st) != 0 && (type == '0' || type == '5')) {
 	    int file = open(pheader->path, O_WRONLY | O_CREAT, 0777);
@@ -75,10 +76,14 @@ int extractor(pile_h* first) {
 	    }
 	    fsync(file);
 	    close(file);
+	    
+	/* Cas d'un lien symbolique */
 	} else if (stat(pheader->path, &st) != 0 && (type == '2')) {
 	    symlink(pheader->header->linkname, pheader->path);
 	}
+	
 	// Changer l'uid et gid
+	
 	lchown(pheader->path, atoi(pheader->header->uid) , atoi(pheader->header->gid));
 	// changer le mode d'accès (PAS DANS LE CAS D'UN LINK )
 	if (type == '0' || type == '5'){
@@ -89,7 +94,7 @@ int extractor(pile_h* first) {
 	times[0].tv_usec = 0;
 	times[1].tv_sec = times[0].tv_sec;
 	times[1].tv_usec = 0;
-	printf("time : %ld\n", times[0].tv_sec);
+	//printf("time : %ld\n", times[0].tv_sec);
 	lutimes(pheader->path, times);
     }
     return 0;
@@ -126,7 +131,7 @@ int main(int argc, char* argv[]) {
 	}
     }
 
-    printf("///debug/// \nx=%d\nl=%d\np=%d avec %d threads\nz=%d\n",optx,optl,optp,nbthread,optz);
+    //printf("///debug/// \nx=%d\nl=%d\np=%d avec %d threads\nz=%d\n",optx,optl,optp,nbthread,optz);
 
     if (optind >= argc){
 	printf("ERROR : an argument (path of tar archive) is expected after the options or the number of thread was not specified with -p option\n");
@@ -164,7 +169,7 @@ int main(int argc, char* argv[]) {
 	    printf("%s\n", path);
 	    int offset = octalToDecimal(atoi(header->size));
 	    int offset2 = ((offset/512)+(offset%512 != 0))*512;
-	    if(optx){
+	    if(optx || optl){
 		boucle = boucle + 1;
 	    	pile_h *sheader;
 	    	sheader = malloc (sizeof (pile_h));
@@ -184,8 +189,35 @@ int main(int argc, char* argv[]) {
 	    lseek(fd, offset2, SEEK_CUR);
 	}
     }
+    pile_h* firstarchive = first;
     if (optx) {
+        /* @TODO Ajouter la création de pthread (étape ultérieure)!!! */
+        
 	extractor(first);
+	
+        struct timeval times2[2];
+        /* Restauration du first */
+        first = firstarchive;
+    
+        /* Réparation des dates des dossiers */
+        while(1){
+    
+    	    if((char)first->header->typeflag[0] == '5'){
+    	        times2[0].tv_sec = longOctalToDecimal(atoll(first->header->mtime));
+	        times2[0].tv_usec = 0;
+	        times2[1].tv_sec = times2[0].tv_sec;
+	        times2[1].tv_usec = 0;
+	        lutimes(first->path, times2);
+	    }
+	    if (first->next != NULL){
+	        first = first->next;
+	    } else {
+	        break;
+	    }
+        }
     }
+    
+    // Suppress unused warnings @TODO destroy the next line
+    if (optl && optz && optp && nbthread) {}
 }
 

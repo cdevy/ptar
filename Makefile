@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Werror -Wextra -g
+CFLAGS=-Wall -Wextra -g
 LDFLAGS=
 EXEC=ptar
 
