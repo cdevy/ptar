@@ -159,6 +159,7 @@ int main(int argc, char* argv[]) {
 
     int empty = 0;
     char path[357] = ""; /* 257 + 100 pour le chemin du lien */
+    char namepath[461] = ""; /* 357 + 104 pour les symbolic link (4 pour la flèche, 100 pour le lien) */
     char filename[101] = "";
     while (!empty) {
 	header = malloc(sizeof (header_t));
@@ -178,9 +179,10 @@ int main(int argc, char* argv[]) {
 	    strncpy(filename, header->name, 100);
 	    strcat(filename, "\0");
 	    strcat(path, filename);
+	    strcpy(namepath, path);
 	    if (header->typeflag[0] == '2') {
-		strcat(path, " -> ../"); /* PROBLEME : ajouter méthode pour connaître le dossier parent commun au lien et au fichier "lié" */
-		strcat(path, header->linkname);
+		strcat(namepath, " -> "); 
+		strcat(namepath, header->linkname);
 	    }
 	    
 
@@ -241,7 +243,7 @@ int main(int argc, char* argv[]) {
 			    break;
 		    }
 		}
-		printf("%s %d/%d %d %s %s\n", perms, user, group, decimalSize, date, path);
+		printf("%s %d/%d %d %s %s\n", perms, user, group, decimalSize, date, namepath);
 	    } else {
 		printf("%s\n", path);
 	    }
@@ -249,7 +251,7 @@ int main(int argc, char* argv[]) {
 	    /* Mise en pile des headers */ 
 
 	    int offset = ((decimalSize/512)+(decimalSize%512 != 0))*512;
-	    if(optx || optl){
+	    if(optx){
 		boucle = boucle + 1;
 	    	pile_h *sheader;
 	    	sheader = malloc (sizeof (pile_h));
@@ -303,5 +305,7 @@ int main(int argc, char* argv[]) {
     
     // Suppress unused warnings @TODO destroy the next line
     if (optl && optz && optp && nbthread) {}
+
+    exit(0);
 }
 
