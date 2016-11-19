@@ -2,7 +2,7 @@
 
 
 typedef struct header_posix_ustar {
-char name[100]; // ca
+char name[100];
 char mode[8];
 char uid[8];
 char gid[8];
@@ -17,7 +17,7 @@ char uname[32];
 char gname[32];
 char devmajor[8];
 char devminor[8];
-char prefix[155]; // ca
+char prefix[155];
 char pad[12];
 } header_t;
 

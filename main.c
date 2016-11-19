@@ -5,8 +5,11 @@
 #include <fcntl.h> /* open */
 #include <unistd.h> /* read et lseek */
 #include <string.h> /* strcpy et strcat */
+#include <time.h>
+
 int boucle = 0;
 char* archive;
+
 int octalToDecimal(int octal) {
     int decimal = 0;
     int i = 1;
@@ -28,6 +31,14 @@ long long longOctalToDecimal(long long octal) {
     }
     return decimal;
 }
+
+void formatDate(char* format, long long timestamp) {
+    time_t time = (time_t) timestamp;
+    struct tm* date;
+    date = localtime(&time);
+    strftime(format, 20, "%Y-%m-%d %X", date);
+}
+
 int extractor(pile_h* first) {
     struct stat st = {0};
     pile_h* pheader;
@@ -83,12 +94,13 @@ int extractor(pile_h* first) {
 	}
 	
 	// Changer l'uid et gid
-	
 	lchown(pheader->path, atoi(pheader->header->uid) , atoi(pheader->header->gid));
+
 	// changer le mode d'accès (PAS DANS LE CAS D'UN LINK )
 	if (type == '0' || type == '5'){
 	    chmod(pheader->path, octalToDecimal(atoi(pheader->header->mode)));
 	}
+
 	// changer le temps de modification (non suffisant pour les dossiers)
 	times[0].tv_sec = longOctalToDecimal(atoll(pheader->header->mtime));
 	times[0].tv_usec = 0;
@@ -144,9 +156,9 @@ int main(int argc, char* argv[]) {
     pile_h *first;
     pile_h *memory;
     int boolean = 1;
-    
+
     int empty = 0;
-    char path[257] = "";
+    char path[357] = ""; /* 257 + 100 pour le chemin du lien */
     char filename[101] = "";
     while (!empty) {
 	header = malloc(sizeof (header_t));
@@ -163,18 +175,86 @@ int main(int argc, char* argv[]) {
 		strcpy(path, header->prefix);
 		strcat(path, "/");
 	    }
-	    strncpy(filename, header->name,100);
+	    strncpy(filename, header->name, 100);
 	    strcat(filename, "\0");
 	    strcat(path, filename);
-	    printf("%s\n", path);
-	    int offset = octalToDecimal(atoi(header->size));
-	    int offset2 = ((offset/512)+(offset%512 != 0))*512;
+	    if (header->typeflag[0] == '2') {
+		strcat(path, " -> ../"); /* PROBLEME : ajouter méthode pour connaître le dossier parent commun au lien et au fichier "lié" */
+		strcat(path, header->linkname);
+	    }
+	    
+
+	    /* Affichage des informations avec la commande -l (permissions, propriétaire, groupe...) */
+
+	    int decimalSize = octalToDecimal(atoi(header->size));
+	    int user = octalToDecimal(atoi(header->uid));
+	    int group = octalToDecimal(atoi(header->gid));
+	    long long timestamp = longOctalToDecimal(atoll(header->mtime)); 
+	    char date[20];
+	    formatDate(date, timestamp);
+
+
+	    if (optl) {
+
+		/* Gestion des permissions */
+		char perms[] = "----------";
+		switch (header->typeflag[0]) {
+		    case '5':
+		        perms[0] = 'd';
+			break;
+		    case '2':
+			perms[0] = 'l';
+			break;
+		    default :
+			break;
+		}
+		int i;
+		for (i=0; i<3; i++) { 
+		    switch (header->mode[4+i]) { // r = 4, w = 2, x = 1, - = 0
+			case '1':
+			    perms[3*i+3] = 'x';
+			    break;
+			case '2':
+			    perms[3*i+2] = 'w';
+			    break;
+			case '3':
+			    perms[3*i+2] = 'w';
+			    perms[3*i+3] = 'x';
+			    break;
+			case '4':
+			    perms[3*i+1] = 'r';
+			    break;
+			case '5':
+			    perms[3*i+1] = 'r';
+			    perms[3*i+3] = 'x';
+			    break;
+			case '6':
+			    perms[3*i+1] = 'r';
+			    perms[3*i+2] = 'w';
+			    break;
+			case '7':
+			    perms[3*i+1] = 'r';
+			    perms[3*i+2] = 'w';
+			    perms[3*i+3] = 'x';
+			    break;
+			default:
+			    break;
+		    }
+		}
+		printf("%s %d/%d %d %s %s\n", perms, user, group, decimalSize, date, path);
+	    } else {
+		printf("%s\n", path);
+	    }
+
+	    /* Mise en pile des headers */ 
+
+	    int offset = ((decimalSize/512)+(decimalSize%512 != 0))*512;
 	    if(optx || optl){
 		boucle = boucle + 1;
 	    	pile_h *sheader;
 	    	sheader = malloc (sizeof (pile_h));
 	    	sheader->header = header;
-		sheader->size = offset;
+		sheader->size = decimalSize;
 		sheader->next = NULL;
 	    	strcpy(sheader->path,path);
 	    	sheader->pos = lseek(fd,0, SEEK_CUR);
@@ -186,10 +266,13 @@ int main(int argc, char* argv[]) {
 	        }
 	        memory = sheader;
 	    }
-	    lseek(fd, offset2, SEEK_CUR);
+	    lseek(fd, offset, SEEK_CUR);
 	}
     }
+
+
     pile_h* firstarchive = first;
+
     if (optx) {
         /* @TODO Ajouter la création de pthread (étape ultérieure)!!! */
         
@@ -209,6 +292,7 @@ int main(int argc, char* argv[]) {
 	        times2[1].tv_usec = 0;
 	        lutimes(first->path, times2);
 	    }
+
 	    if (first->next != NULL){
 	        first = first->next;
 	    } else {
