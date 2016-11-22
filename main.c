@@ -158,8 +158,8 @@ int main(int argc, char* argv[]) {
     int boolean = 1;
 
     int empty = 0;
-    char path[357] = ""; /* 257 + 100 pour le chemin du lien */
-    char namepath[461] = ""; /* 357 + 104 pour les symbolic link (4 pour la flèche, 100 pour le lien) */
+    char path[257] = "";
+    char namepath[361] = ""; /* 257 + 104 pour les symbolic link (4 pour la flèche, 100 pour le lien) */
     char filename[101] = "";
     while (!empty) {
 	header = malloc(sizeof (header_t));
