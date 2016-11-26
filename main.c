@@ -43,6 +43,7 @@ int extractor(pile_h* first) {
     struct stat st = {0};
     pile_h* pheader;
     struct timeval times[2];
+    int fd = open(archive, O_RDONLY);
     while (boucle) {
 	
 	/* Récupération du header (@TODO insérer mutex ici pour le cas des pthread) */
@@ -53,8 +54,8 @@ int extractor(pile_h* first) {
 	boucle = boucle -1;
 
 	/* Extraction */
-	int fd = open(archive, O_RDONLY);
-	lseek(fd,pheader->pos,SEEK_CUR);
+	
+	lseek(fd,pheader->pos,SEEK_SET);
 	int i;
 
 	/* Création des dossiers parents */
@@ -109,6 +110,7 @@ int extractor(pile_h* first) {
 	//printf("time : %ld\n", times[0].tv_sec);
 	lutimes(pheader->path, times);
     }
+    close(fd);
     return 0;
 }  
 	
