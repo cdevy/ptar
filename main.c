@@ -6,9 +6,10 @@
 #include <unistd.h> /* read et lseek */
 #include <string.h> /* strcpy et strcat */
 #include <time.h>
-
+#include <pthread.h> /* threads & mutex */
 int boucle = 0;
 char* archive;
+pthread_mutex_t pile_mutex;
 
 int octalToDecimal(int octal) {
     int decimal = 0;
@@ -39,22 +40,30 @@ void formatDate(char* format, long long timestamp) {
     strftime(format, 20, "%Y-%m-%d %X", date);
 }
 
-int extractor(pile_h* first) {
+void *extractor(void* pointeur) {
+    pile_h** pointeur_first = (pile_h**) pointeur;
     struct stat st = {0};
     pile_h* pheader;
     struct timeval times[2];
     int fd = open(archive, O_RDONLY);
-    while (boucle) {
+    while (1) {
 	
 	/* Récupération du header (@TODO insérer mutex ici pour le cas des pthread) */
-	pheader = first;
-	if(first->next != NULL){
-	    first = first->next;
+	pthread_mutex_lock(&pile_mutex);
+	pheader = *pointeur_first;
+	if((*pointeur_first)->next != NULL){
+	    *pointeur_first = (*pointeur_first)->next;
 	}
-	boucle = boucle -1;
+	if(boucle) {
+	    boucle = boucle -1;
+	} else {
+	    pthread_mutex_unlock(&pile_mutex);
+	    break;
+	}
+	pthread_mutex_unlock(&pile_mutex);
 
 	/* Extraction */
-	
+
 	lseek(fd,pheader->pos,SEEK_SET);
 	int i;
 
@@ -111,7 +120,7 @@ int extractor(pile_h* first) {
 	lutimes(pheader->path, times);
     }
     close(fd);
-    return 0;
+    return NULL;
 }  
 	
 
@@ -149,7 +158,7 @@ int main(int argc, char* argv[]) {
 
     if (optind >= argc){
 	printf("ERROR : an argument (path of tar archive) is expected after the options or the number of thread was not specified with -p option\n");
-	exit(-1);
+	exit(1);
     }
 
     archive = argv[optind];
@@ -279,9 +288,20 @@ int main(int argc, char* argv[]) {
 
     if (optx) {
         /* @TODO Ajouter la création de pthread (étape ultérieure)!!! */
-        
-	extractor(first);
-	
+        pile_h** pointeur = &first;
+	if(optp) {
+	    pthread_t threads[nbthread]; //création du tableau de thread
+	    int t;
+	    for(t=0; t<nbthread; t++){
+		pthread_create(&threads[t], NULL, extractor, pointeur);
+	    }
+	    for(t=0; t<nbthread; t++){
+		pthread_join(threads[t],NULL);
+	    }
+	} else {
+	    extractor(pointeur);
+	}
+
         struct timeval times2[2];
         /* Restauration du first */
         first = firstarchive;
