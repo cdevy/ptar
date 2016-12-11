@@ -34,6 +34,8 @@ long long longOctalToDecimal(long long octal);
 
 void formatDate(char* format, long long timestamp);
 
+void setPermissions(char* perms, header_t* header);
+
 int toAscii(char* field, int size);
 
 int validChecksum(header_t* header);

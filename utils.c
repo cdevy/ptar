@@ -30,6 +30,54 @@ void formatDate(char* format, long long timestamp) {
   strftime(format, 20, "%Y-%m-%d %X", date);
 }
 
+void setPermissions(char* perms, header_t* header) {
+  /* Gestion des dossiers et liens symboliques */
+  switch (header->typeflag[0]) {
+    case '5':
+      perms[0] = 'd';
+      break;
+    case '2':
+      perms[0] = 'l';
+      break;
+    default :
+      break;
+  }
+
+  int i;
+  for (i=0; i<3; i++) {
+    switch (header->mode[4+i]) { /* r = 4, w = 2, x = 1, - = 0 */
+      case '1':
+        perms[3*i+3] = 'x';
+        break;
+      case '2':
+        perms[3*i+2] = 'w';
+        break;
+      case '3':
+        perms[3*i+2] = 'w';
+        perms[3*i+3] = 'x';
+        break;
+      case '4':
+        perms[3*i+1] = 'r';
+        break;
+      case '5':
+        perms[3*i+1] = 'r';
+        perms[3*i+3] = 'x';
+        break;
+      case '6':
+        perms[3*i+1] = 'r';
+        perms[3*i+2] = 'w';
+        break;
+      case '7':
+        perms[3*i+1] = 'r';
+        perms[3*i+2] = 'w';
+        perms[3*i+3] = 'x';
+        break;
+      default:
+        break;
+    }
+  }
+}
+
 int toAscii(char* field, int size) {
 	int res = 0;
 	int i;
@@ -59,7 +107,8 @@ int validChecksum(header_t* header) {
 	sum += toAscii(header->prefix, 155);
 	sum += toAscii(header->pad, 12);
 	if (octalToDecimal(atoi(header->checksum)) == sum) {
-		sum = 0;
-	}
-  return sum;
+		return 1;
+	} else {
+    return 0;
+  }
 }

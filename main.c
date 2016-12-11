@@ -164,11 +164,8 @@ int main(int argc, char* argv[]) {
     } else {
 
       /* Vérification du checksum */
-      if (validChecksum(header)) {
-        printf("Checksum not OK (read : %d, calculated: %d)\n", atoi(header->checksum), validChecksum(header));
+      if (!validChecksum(header)) {
         exit(1);
-      } else {
-        printf("Checksum OK (%d)\n", atoi(header->checksum));
       }
 
       /* Détermination du chemin du fichier */
@@ -197,51 +194,7 @@ int main(int argc, char* argv[]) {
 
       if (optl) {
         char perms[] = "----------";
-
-		    switch (header->typeflag[0]) { /* Gestion des dossiers et liens symboliques */
-          case '5':
-            perms[0] = 'd';
-			      break;
-          case '2':
-			      perms[0] = 'l';
-			      break;
-		      default :
-			      break;
-        }
-
-		    int i;
-		    for (i=0; i<3; i++) {
-          switch (header->mode[4+i]) { /* r = 4, w = 2, x = 1, - = 0 */
-            case '1':
-			        perms[3*i+3] = 'x';
-			        break;
-			      case '2':
-			        perms[3*i+2] = 'w';
-			        break;
-			      case '3':
-              perms[3*i+2] = 'w';
-              perms[3*i+3] = 'x';
-              break;
-      			case '4':
-      			  perms[3*i+1] = 'r';
-      			  break;
-      			case '5':
-      			  perms[3*i+1] = 'r';
-      			  perms[3*i+3] = 'x';
-      			  break;
-      			case '6':
-      			  perms[3*i+1] = 'r';
-      			  perms[3*i+2] = 'w';
-      			  break;
-      			case '7':
-      			  perms[3*i+1] = 'r';
-      			  perms[3*i+2] = 'w';
-      			  perms[3*i+3] = 'x';
-      			  break;
-      			default:
-      			  break;
-      		}
-        }
+        setPermissions(perms, header);
 		    printf("%s %d/%d %d %s %s\n", perms, user, group, decimalSize, date, namepath);
 	    } else {
 		    printf("%s\n", path);
