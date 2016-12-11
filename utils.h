@@ -1,5 +1,4 @@
-/* HEADER */
-
+/* Méthodes et structures utiles */
 
 typedef struct header_posix_ustar {
   char name[100];
@@ -28,3 +27,13 @@ typedef struct pile_header {
   char path[257];
   struct pile_header* next;
 } pile_h;
+
+int octalToDecimal(int octal);
+
+long long longOctalToDecimal(long long octal);
+
+void formatDate(char* format, long long timestamp);
+
+int toAscii(char* field, int size);
+
+int validChecksum(header_t* header);

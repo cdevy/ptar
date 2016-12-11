@@ -5,11 +5,14 @@ EXEC=ptar
 
 all:: $(EXEC)
 
-ptar: main.o
-	$(CC) -pthread -o ptar main.o $(LDFLAGS)
+ptar: main.o utils.o
+	$(CC) -pthread -o ptar main.o utils.o $(LDFLAGS)
 
-main.o: main.c header.h
-	$(CC) $(CFLAGS) -o main.o -include header.h -c main.c $(CFLAGS)
+utils.o: utils.c utils.h
+	$(CC) $(CFLAGS) -o utils.o -include utils.h -c utils.c $(CFLAGS)
+
+main.o: main.c utils.h
+	$(CC) $(CFLAGS) -o main.o -include utils.h -c main.c $(CFLAGS)
 
 .PHONY: clean mrproper
 
@@ -18,4 +21,3 @@ clean::
 
 mrproper:: clean
 	rm -rf $(EXEC)
-			
