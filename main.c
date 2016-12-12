@@ -1,12 +1,34 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h> /* lutimes */
 #include <sys/stat.h> /* open et lseek */
+#include <sys/time.h> /* lutimes */
 #include <fcntl.h> /* open */
 #include <unistd.h> /* read et lseek */
 #include <string.h> /* strcpy et strcat */
+#include <time.h>
 #include <pthread.h> /* threads & mutex */
 
+
+#include <dlfcn.h> /*dlopen*/
+#include <assert.h>
+#include "zlib/zlib.h"
+#define windowBits 15
+#define ENABLE_ZLIB_GZIP 32
+#define CHUNK 0x4000
+#define temp "temp_for_zlib.tar"
+#if defined(MSDOS) || defined(OS2) || defined(WIN32) || defined(__CYGWIN__)
+
+#  include <fcntl.h>
+
+#  include <io.h>
+
+#  define SET_BINARY_MODE(file) setmode(fileno(file), O_BINARY)
+
+#else
+
+#  define SET_BINARY_MODE(file)
+
+#endif
 int boucle = 0;
 char* archive;
 pthread_mutex_t pile_mutex;
@@ -137,6 +159,111 @@ int main(int argc, char* argv[]) {
   }
 
   archive = argv[optind];
+
+  	// TOUS LES TRUCS DU ZLIB //
+    if (optz) {
+
+	// 1) open zlib
+	//On fait des tests pour les 3 types différents
+ 	void* handle = dlopen("zlib/libz.dylib",RTLD_NOW);
+ 	if (!handle) {
+   	    handle = dlopen("zlib/libz.so",RTLD_NOW);
+ 	}
+ 	if (!handle) {
+   	    handle = dlopen("zlib/libz.sl",RTLD_NOW);
+ 	}
+ 	if (!handle) {
+   	    printf("unable to open zlib (.dylib, .so or .sl) !\nerror : %s\n", dlerror());printf("\n");
+   	    exit(EXIT_FAILURE);
+ 	}
+	
+	// 2) import functions 
+	int (*inflateInit2Remote)(z_streamp, int, const char *, int);
+  	void (*inflateEndRemote)(z_streamp);
+  	int (*inflateRemote)(z_streamp, int);
+	
+	// 3) Declaration of everything needed
+  	*(void **) (&inflateInit2Remote) = dlsym(handle, "inflateInit2_");
+  	*(void **) (&inflateEndRemote) = dlsym(handle, "inflateEnd");
+  	*(void **) (&inflateRemote) = dlsym(handle, "inflate");
+	
+	int ret;
+   	unsigned have;
+    	unsigned char in[CHUNK];
+    	unsigned char out[CHUNK];
+	
+	z_stream strm;
+    	strm.zalloc = Z_NULL;
+    	strm.zfree = Z_NULL;
+    	strm.opaque = Z_NULL;
+    	strm.avail_in = 0;
+    	strm.next_in = Z_NULL;
+	// SEGFAULT HERE !!!!!!!!!!!!!!!!
+	printf("test\n");
+    	ret = (*inflateInit2Remote)(& strm, windowBits | ENABLE_ZLIB_GZIP, ZLIB_VERSION,(int)sizeof(z_stream));
+	printf("test\n");
+	if (ret != Z_OK){
+        	printf("ERROR : Error during initialization of zlib\n");
+        	exit(1);
+    	}
+
+	FILE *dest = fopen( temp, "w+" );
+	FILE *archive_file = fopen(archive, "r+" );
+	// 4) Decompression (called inflation by zlib)
+	do {
+
+            strm.avail_in = fread(in, 1, CHUNK, archive_file);
+
+	    // 4.1) Verication of source file
+
+            if (ferror(archive_file)) {
+            	printf("ERROR : Could not open source file for .gz extraction\n");
+            	(void)(*inflateEndRemote)(&strm);
+		unlink(temp);
+            	exit(1);
+            }
+	    
+	    // 4.2) End of decompression 
+            if (strm.avail_in == 0) {
+           	 break;
+	    }
+
+            strm.next_in = in;
+
+            // 4.3) Extract data chunk by chunk
+            do {
+            	strm.avail_out = CHUNK;
+            	strm.next_out = out;
+            	ret = (*inflateRemote)(&strm, Z_NO_FLUSH);
+		// 4.3.1) Error case during the inflation
+            	if (ret == Z_STREAM_ERROR || ret == Z_MEM_ERROR) {
+		    printf("ERROR : Extraction (inflation) of the file failed\n");
+		    (void)(*inflateEndRemote)(&strm);
+		    unlink(temp);
+		    exit(1);
+		} 
+                have = CHUNK - strm.avail_out;
+
+		// 4.3.2) Write (flush) data from 'out' to the file (and check for errors)
+
+                if (fwrite(out, 1, have, dest) != have || ferror(dest)) {
+               	    printf("ERROR : Data written on inflated file is corrupted\n");
+                    unlink(temp);
+                    (void)(*inflateEndRemote)(&strm);
+                    exit(1);
+            	}
+            } while (strm.avail_out == 0);
+
+        // Double verification for loop
+        } while (ret != Z_STREAM_END);
+
+
+    // 5) End of inflation, suppression of useless data
+        (void)(*inflateEndRemote)(&strm);
+        archive = temp;
+    }
+
+
   int fd = open(archive, O_RDONLY);
   header_t *header;
   pile_h *first;

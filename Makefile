@@ -6,7 +6,9 @@ EXEC=ptar
 all:: $(EXEC)
 
 ptar: main.o utils.o
-	$(CC) -pthread -o ptar main.o utils.o $(LDFLAGS)
+	cd zlib/;make distclean;./configure;make;cd ../;
+
+	$(CC) -pthread -o ptar main.o utils.o $(LDFLAGS) -ldl
 
 utils.o: utils.c utils.h
 	$(CC) $(CFLAGS) -o utils.o -include utils.h -c utils.c $(CFLAGS)
