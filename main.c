@@ -198,10 +198,7 @@ int main(int argc, char* argv[]) {
     	strm.opaque = Z_NULL;
     	strm.avail_in = 0;
     	strm.next_in = Z_NULL;
-	// SEGFAULT HERE !!!!!!!!!!!!!!!!
-	printf("test\n");
     	ret = (*inflateInit2Remote)(& strm, windowBits | ENABLE_ZLIB_GZIP, ZLIB_VERSION,(int)sizeof(z_stream));
-	printf("test\n");
 	if (ret != Z_OK){
         	printf("ERROR : Error during initialization of zlib\n");
         	exit(1);
