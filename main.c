@@ -351,7 +351,6 @@ int main(int argc, char* argv[]) {
   pile_h* firstarchive = first;
 
   if (optx) {
-    /* @TODO Ajouter la création de pthread (étape ultérieure)!!! */
     pile_h** pointeur = &first;
     if(optp) {
       pthread_t threads[nbthread]; //création du tableau de thread
@@ -390,8 +389,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // Suppress unused warnings @TODO destroy the next line
-  if (optl && optz && optp && nbthread) {}
-
+  if (optz) {
+	remove(temp);
+  }
   exit(0);
 }
