@@ -165,12 +165,12 @@ int main(int argc, char* argv[]) {
 
 	// 1) open zlib
 	//On fait des tests pour les 3 types différents
- 	void* handle = dlopen("zlib/libz.dylib",RTLD_NOW);
+ 	void* handle = dlopen("libz.dylib",RTLD_NOW);
  	if (!handle) {
-   	    handle = dlopen("zlib/libz.so",RTLD_NOW);
+   	    handle = dlopen("libz.so",RTLD_NOW);
  	}
  	if (!handle) {
-   	    handle = dlopen("zlib/libz.sl",RTLD_NOW);
+   	    handle = dlopen("libz.sl",RTLD_NOW);
  	}
  	if (!handle) {
    	    printf("unable to open zlib (.dylib, .so or .sl) !\nerror : %s\n", dlerror());printf("\n");
@@ -198,10 +198,7 @@ int main(int argc, char* argv[]) {
     	strm.opaque = Z_NULL;
     	strm.avail_in = 0;
     	strm.next_in = Z_NULL;
-	// SEGFAULT HERE !!!!!!!!!!!!!!!!
-	printf("test\n");
     	ret = (*inflateInit2Remote)(& strm, windowBits | ENABLE_ZLIB_GZIP, ZLIB_VERSION,(int)sizeof(z_stream));
-	printf("test\n");
 	if (ret != Z_OK){
         	printf("ERROR : Error during initialization of zlib\n");
         	exit(1);
