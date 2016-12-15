@@ -165,12 +165,12 @@ int main(int argc, char* argv[]) {
 
 	// 1) open zlib
 	//On fait des tests pour les 3 types différents
- 	void* handle = dlopen("zlib/libz.dylib",RTLD_NOW);
+ 	void* handle = dlopen("libz.dylib",RTLD_NOW);
  	if (!handle) {
-   	    handle = dlopen("zlib/libz.so",RTLD_NOW);
+   	    handle = dlopen("libz.so",RTLD_NOW);
  	}
  	if (!handle) {
-   	    handle = dlopen("zlib/libz.sl",RTLD_NOW);
+   	    handle = dlopen("libz.sl",RTLD_NOW);
  	}
  	if (!handle) {
    	    printf("unable to open zlib (.dylib, .so or .sl) !\nerror : %s\n", dlerror());printf("\n");
